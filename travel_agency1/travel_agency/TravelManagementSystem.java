@@ -1,7 +1,14 @@
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Scanner;
+import java.io.Serializable;
 
-class TravelPackage {
+
+
+class TravelPackage implements Serializable {
+    private static final long serialVersionUID = 1L;
     private int packageId;
     private String destination;
     private double price;
@@ -37,7 +44,9 @@ class TravelPackage {
     }
 }
 
-class Customer {
+class Customer implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private int customerId;
     private String name;
     private String email;
@@ -66,16 +75,41 @@ class Customer {
     }
 }
 
-class Booking {
-    private int bookingId;
+class Booking implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    public int bookingId;
     private Customer customer;
     private TravelPackage travelPackage;
+    private boolean isPaid;
+    private double amountPaid;
 
     public Booking(int bookingId, Customer customer, TravelPackage travelPackage) {
         this.bookingId = bookingId;
         this.customer = customer;
         this.travelPackage = travelPackage;
+        this.isPaid = false;
+        this.amountPaid = 0.0;
     }
+    public TravelPackage getTravelPackage() {
+        return travelPackage;
+    }
+
+    public void addPayment(double amount) {
+        amountPaid += amount;
+        if (amountPaid >= travelPackage.getPrice()) {
+            isPaid = true;
+        }
+    }
+
+    public boolean isPaid() {
+        return isPaid;
+    }
+
+    public double getAmountPaid() {
+        return amountPaid;
+    }
+
 
     @Override
     public String toString() {
@@ -85,17 +119,64 @@ class Booking {
                 "\nPrice: $" + travelPackage.getPrice();
     }
 }
+class Payment implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-public class TravelManagementSystem {
+    public int paymentId;
+    private int bookingId;
+    private double amount;
+
+    public Payment(int paymentId, int bookingId, double amount) {
+        this.paymentId = paymentId;
+        this.bookingId = bookingId;
+        this.amount = amount;
+    }
+
+    public int getPaymentId() {
+        return paymentId;
+    }
+
+    public int getBookingId() {
+        return bookingId;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    @Override
+    public String toString() {
+        return "Payment ID: " + paymentId + ", Booking ID: " + bookingId + ", Amount: $" + amount;
+    }
+}
+
+
+public class TravelManagementSystem implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private static ArrayList<TravelPackage> packages = new ArrayList<>();
     private static ArrayList<Customer> customers = new ArrayList<>();
     private static ArrayList<Booking> bookings = new ArrayList<>();
     private static int bookingIdCounter = 1;
 
+    private static ArrayList<Payment> payments = new ArrayList<>();
+    private static int paymentIdCounter = 1;
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         initializePackages();
         int choice;
+
+        packages = loadFromFile("packages.txt");
+        if (packages.isEmpty()) {
+            initializePackages();
+            saveToFile("packages.txt", packages); // Αποθήκευση αρχικών πακέτων
+        }
+
+        customers = loadFromFile("customers.txt");
+        bookings = loadFromFile("bookings.txt");
+        payments = loadFromFile("payments.txt");
+
 
         do {
             System.out.println("\n--- Travel and Tourism Management System ---");
@@ -104,6 +185,8 @@ public class TravelManagementSystem {
             System.out.println("3. Make a Booking");
             System.out.println("4. View Bookings");
             System.out.println("5. Exit");
+            System.out.println("6. Add Payment");
+            System.out.println("7. View Payments");
             System.out.print("Enter your choice: ");
             choice = scanner.nextInt();
             scanner.nextLine(); // Consume newline
@@ -123,6 +206,12 @@ public class TravelManagementSystem {
                     break;
                 case 5:
                     System.out.println("Thank you for using the system!");
+                    break;
+                case 6:
+                    addPayment(scanner);
+                    break;
+                case 7:
+                    viewPayments(scanner);
                     break;
                 default:
                     System.out.println("Invalid choice! Please try again.");
@@ -154,8 +243,10 @@ public class TravelManagementSystem {
         String email = scanner.nextLine();
 
         customers.add(new Customer(customerId, name, email));
+        saveToFile("customers.txt", customers);
         System.out.println("Customer added successfully!");
     }
+
 
     private static void makeBooking(Scanner scanner) {
         if (customers.isEmpty()) {
@@ -172,6 +263,7 @@ public class TravelManagementSystem {
         for (Customer customer : customers) {
             System.out.println(customer);
         }
+
         System.out.print("Enter Customer ID: ");
         int customerId = scanner.nextInt();
 
@@ -179,6 +271,7 @@ public class TravelManagementSystem {
                 .filter(c -> c.getCustomerId() == customerId)
                 .findFirst()
                 .orElse(null);
+
 
         if (selectedCustomer == null) {
             System.out.println("Invalid Customer ID!");
@@ -203,6 +296,7 @@ public class TravelManagementSystem {
         }
 
         bookings.add(new Booking(bookingIdCounter++, selectedCustomer, selectedPackage));
+        saveToFile("bookings.txt", bookings);
         System.out.println("Booking created successfully!");
     }
 
@@ -217,4 +311,71 @@ public class TravelManagementSystem {
             System.out.println(booking + "\n");
         }
     }
+    private static void addPayment(Scanner scanner) {
+        System.out.print("\nEnter Booking ID: ");
+        int bookingId = scanner.nextInt();
+
+        Booking selectedBooking = bookings.stream()
+                .filter(b -> b.bookingId == bookingId)
+                .findFirst()
+                .orElse(null);
+
+        if (selectedBooking == null) {
+            System.out.println("Invalid Booking ID!");
+            return;
+        }
+
+        System.out.print("Enter Payment Amount: $");
+        double amount = scanner.nextDouble();
+
+        payments.add(new Payment(paymentIdCounter++, bookingId, amount));
+        selectedBooking.addPayment(amount);
+        saveToFile("payments.txt", payments);
+        saveToFile("bookings.txt", bookings);
+        System.out.println("Payment recorded successfully!");
+        if (selectedBooking.isPaid()) {
+            System.out.println("Booking is now fully paid!");
+        } else {
+            System.out.println("Remaining balance: $" +
+                    (selectedBooking.getTravelPackage().getPrice() - selectedBooking.getAmountPaid()));
+        }
+    }
+    private static void viewPayments(Scanner scanner) {
+        System.out.print("\nEnter Booking ID to view payments: ");
+        int bookingId = scanner.nextInt();
+
+        System.out.println("\nPayments for Booking ID " + bookingId + ":");
+        boolean hasPayments = false;
+        for (Payment payment : payments) {
+            if (payment.getBookingId() == bookingId) {
+                System.out.println(payment);
+                hasPayments = true;
+            }
+        }
+
+        if (!hasPayments) {
+            System.out.println("No payments found for this booking.");
+        }
+    }
+    private static <T> void saveToFile(String filename, ArrayList<T> list) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
+            oos.writeObject(list);
+        } catch (IOException e) {
+            System.out.println("Error saving data to " + filename);
+        }
+    }
+    private static <T> ArrayList<T> loadFromFile(String filename) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
+            return (ArrayList<T>) ois.readObject();
+        } catch (FileNotFoundException e) {
+            System.out.println("File " + filename + " not found. Creating a new one.");
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Error loading data from " + filename + ". Starting with empty data.");
+        }
+        return new ArrayList<>();
+    }
+
+
+
+
 }
