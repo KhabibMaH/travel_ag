@@ -150,7 +150,6 @@ class Payment implements Serializable {
     }
 }
 
-
 public class TravelManagementSystem implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -167,16 +166,9 @@ public class TravelManagementSystem implements Serializable {
         initializePackages();
         int choice;
 
-        packages = loadFromFile("packages.txt");
         if (packages.isEmpty()) {
             initializePackages();
-            saveToFile("packages.txt", packages); // Αποθήκευση αρχικών πακέτων
         }
-
-        customers = loadFromFile("customers.txt");
-        bookings = loadFromFile("bookings.txt");
-        payments = loadFromFile("payments.txt");
-
 
         do {
             System.out.println("\n--- Travel and Tourism Management System ---");
@@ -189,7 +181,7 @@ public class TravelManagementSystem implements Serializable {
             System.out.println("7. View Payments");
             System.out.print("Enter your choice: ");
             choice = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
+            scanner.nextLine();
 
             switch (choice) {
                 case 1:
@@ -243,7 +235,6 @@ public class TravelManagementSystem implements Serializable {
         String email = scanner.nextLine();
 
         customers.add(new Customer(customerId, name, email));
-        saveToFile("customers.txt", customers);
         System.out.println("Customer added successfully!");
     }
 
@@ -296,7 +287,6 @@ public class TravelManagementSystem implements Serializable {
         }
 
         bookings.add(new Booking(bookingIdCounter++, selectedCustomer, selectedPackage));
-        saveToFile("bookings.txt", bookings);
         System.out.println("Booking created successfully!");
     }
 
@@ -330,8 +320,6 @@ public class TravelManagementSystem implements Serializable {
 
         payments.add(new Payment(paymentIdCounter++, bookingId, amount));
         selectedBooking.addPayment(amount);
-        saveToFile("payments.txt", payments);
-        saveToFile("bookings.txt", bookings);
         System.out.println("Payment recorded successfully!");
         if (selectedBooking.isPaid()) {
             System.out.println("Booking is now fully paid!");
@@ -357,25 +345,5 @@ public class TravelManagementSystem implements Serializable {
             System.out.println("No payments found for this booking.");
         }
     }
-    private static <T> void saveToFile(String filename, ArrayList<T> list) {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
-            oos.writeObject(list);
-        } catch (IOException e) {
-            System.out.println("Error saving data to " + filename);
-        }
-    }
-    private static <T> ArrayList<T> loadFromFile(String filename) {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
-            return (ArrayList<T>) ois.readObject();
-        } catch (FileNotFoundException e) {
-            System.out.println("File " + filename + " not found. Creating a new one.");
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Error loading data from " + filename + ". Starting with empty data.");
-        }
-        return new ArrayList<>();
-    }
-
-
-
 
 }
